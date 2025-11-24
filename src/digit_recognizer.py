@@ -1,41 +1,40 @@
-# digit_recognizer.py - FIXED VERSION FOR MAC
 import tkinter as tk
-from tkinter import Button, Canvas, Label, Frame
+from tkinter import Frame, Label, Canvas, Button
 from PIL import Image, ImageDraw, ImageOps, ImageFilter
-import numpy as np
 from keras.models import load_model
-import os
+import numpy as np
 
 
 class DigitRecognizer:
     def __init__(self, root):
         self.root = root
-        self.root.title("Håndskrevne Tal - Real-time Neural Network Genkendelse")
-        self.root.geometry("900x700")
+        self.model = load_model("./data/mnist_model.keras")
+        self.root.title("Håndskrevne Tal - Neural Network Genkendelse")
+        self.root.geometry("900x650")
         self.root.configure(bg='#2c3e50')
-
-        self.root.bind('<space>', lambda e: self.clear_canvas())
-
-        # Load den trænede model
-        print("Indlæser model...")
-        model_path = os.path.join('data', 'mnist_model.keras')
-        self.model = load_model(model_path)
-        print("Model indlæst!")
-
-        # Flag til at tracke om vi skal opdatere predictions
-        self.is_drawing = False
-        self.prediction_delay = 300
         self.after_id = None
+        self.prediction_delay = 300  # milliseconds
 
-        # VIGTIGT: Gem sidste position for at tegne linjer
+        # Track drawing state
         self.last_x = None
         self.last_y = None
+
+        # CREATE PIL IMAGE (for neural network processing)
+        # We draw on BOTH tkinter Canvas AND PIL Image
+        self.canvas_width = 400
+        self.canvas_height = 400
+        self.image = Image.new(
+            'L',  # Grayscale mode
+            (self.canvas_width, self.canvas_height),
+            'white'  # White background
+        )
+        self.draw = ImageDraw.Draw(self.image)
 
         # Main container
         main_frame = Frame(root, bg='#2c3e50')
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-        # Venstre side - Canvas
+        # LEFT FRAME
         left_frame = Frame(main_frame, bg='#2c3e50')
         left_frame.pack(side=tk.LEFT, padx=(0, 20))
 
@@ -49,48 +48,54 @@ class DigitRecognizer:
         )
         title_label.pack(pady=(0, 10))
 
-        # Canvas til at tegne på
+        # CANVAS - where users draw
         self.canvas_width = 400
         self.canvas_height = 400
+
         self.canvas = Canvas(
             left_frame,
             width=self.canvas_width,
             height=self.canvas_height,
-            bg='white',
-            cursor='cross',
-            highlightthickness=2,
-            highlightbackground='#34495e'
+            bg='white',  # White background for drawing
+            cursor='cross',  # Crosshair cursor
+            highlightthickness=2,  # Border width
+            highlightbackground='#34495e'  # Border color
         )
         self.canvas.pack()
 
-        # PIL image til at gemme tegningen
-        self.image = Image.new('L', (self.canvas_width, self.canvas_height), 'white')
-        self.draw = ImageDraw.Draw(self.image)
 
-        # Bind musebevægelser - MED FIX!
-        self.canvas.bind("<Button-1>", self.start_drawing)  # Når du klikker
-        self.canvas.bind("<B1-Motion>", self.paint)  # Når du trækker
-        self.canvas.bind("<ButtonRelease-1>", self.stop_drawing)  # Når du slipper
+        # BIND MOUSE EVENTS to canvas
+        # When user clicks (presses mouse button)
+        self.canvas.bind("<Button-1>", self.start_drawing)
 
-        # Clear knap
+        # When user drags (moves mouse with button pressed)
+        self.canvas.bind("<B1-Motion>", self.paint)
+
+        # When user releases mouse button
+        self.canvas.bind("<ButtonRelease-1>", self.stop_drawing)
+
+        self.root.bind("<space>", lambda e: self.clear_canvas())
+
+        # CLEAR BUTTON
         self.clear_button = Button(
             left_frame,
             text="Ryd Canvas",
-            command=self.clear_canvas,
-            bg='#e74c3c',
-            fg='white',
+            command=self.clear_canvas,  # Function to call when clicked
+            bg='#e74c3c',  # Red background
+            fg='white',  # White text
             font=('Helvetica', 14, 'bold'),
             padx=20,
             pady=10,
-            cursor='hand2'
+            cursor='pointinghand'  # Hand cursor on hover
         )
         self.clear_button.pack(pady=20)
 
-        # Højre side - Predictions (samme som før)
+        # RIGHT FRAME
         right_frame = Frame(main_frame, bg='#34495e', width=400)
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         right_frame.pack_propagate(False)
 
+        # Predictions title
         pred_title = Label(
             right_frame,
             text="Real-time Predictions",
@@ -100,9 +105,15 @@ class DigitRecognizer:
         )
         pred_title.pack(pady=20)
 
-        self.top_prediction_frame = Frame(right_frame, bg='#2ecc71', height=100)
+        # TOP PREDICTION BOX - shows the best guess
+        self.top_prediction_frame = Frame(
+            right_frame,
+            bg='#2ecc71',  # Green background
+            height=100
+        )
         self.top_prediction_frame.pack(fill=tk.X, padx=20, pady=10)
 
+        # Label saying "Bedste Gæt:"
         Label(
             self.top_prediction_frame,
             text="Bedste Gæt:",
@@ -111,26 +122,31 @@ class DigitRecognizer:
             fg='white'
         ).pack(pady=(10, 0))
 
+        # The actual digit prediction (big number)
         self.top_digit_label = Label(
             self.top_prediction_frame,
-            text="?",
+            text="?",  # Default value before prediction
             font=('Helvetica', 48, 'bold'),
             bg='#2ecc71',
             fg='white'
         )
         self.top_digit_label.pack()
 
+        # PROBABILITY BARS CONTAINER
         self.prob_frame = Frame(right_frame, bg='#34495e')
         self.prob_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
 
-        self.prob_bars = []
-        self.prob_labels = []
-        self.prob_percentages = []
+        # Lists to store references to widgets
+        self.prob_bars = []  # Canvas for drawing bars
+        self.prob_percentages = []  # Labels showing percentages
 
+        # Create 10 probability bars (one for each digit 0-9)
         for i in range(10):
+            # Container for this digit's row
             digit_frame = Frame(self.prob_frame, bg='#34495e')
             digit_frame.pack(fill=tk.X, pady=5)
 
+            # Digit label (shows "0:", "1:", etc.)
             digit_label = Label(
                 digit_frame,
                 text=f"{i}:",
@@ -141,14 +157,26 @@ class DigitRecognizer:
             )
             digit_label.pack(side=tk.LEFT)
 
-            bar_container = Frame(digit_frame, bg='#2c3e50', height=25, width=250)
+            # Bar container (fixed size)
+            bar_container = Frame(
+                digit_frame,
+                bg='#2c3e50',
+                height=25,
+                width=250
+            )
             bar_container.pack(side=tk.LEFT, padx=10)
             bar_container.pack_propagate(False)
 
-            bar = Canvas(bar_container, bg='#2c3e50', highlightthickness=0)
+            # Canvas for drawing the progress bar
+            bar = Canvas(
+                bar_container,
+                bg='#2c3e50',
+                highlightthickness=0  # No border
+            )
             bar.pack(fill=tk.BOTH, expand=True)
-            self.prob_bars.append(bar)
+            self.prob_bars.append(bar)  # Save reference
 
+            # Percentage label (shows "0.0%", etc.)
             percentage = Label(
                 digit_frame,
                 text="0.0%",
@@ -158,165 +186,149 @@ class DigitRecognizer:
                 width=6
             )
             percentage.pack(side=tk.LEFT)
-            self.prob_percentages.append(percentage)
+            self.prob_percentages.append(percentage)  # Save reference
 
-        self.update_probabilities([0.1] * 10)
+        # Initialize with default probabilities
+        self.update_probabilities([0.1] * 10)  # Equal 10% for all
 
     def start_drawing(self, event):
-        """Når musen klikkes - gem startposition"""
+        """Called when user first clicks on canvas"""
+        # Save the starting position
         self.last_x = event.x
         self.last_y = event.y
-        self.is_drawing = True
-
-        # Tegn første punkt
-        self.paint(event)
 
     def paint(self, event):
-        """
-        Tegn på canvas når musen bevæges
-        FIX: Tegner LINJER mellem punkter i stedet for kun cirkler
-        Dette løser "prikker" problemet på Mac!
-        """
+        """Draw on both Canvas AND PIL Image"""
         if self.last_x is None or self.last_y is None:
             self.last_x = event.x
             self.last_y = event.y
             return
 
-        # Tegn LINJE fra sidste position til nuværende position
-        # Dette sikrer kontinuerlige streger selv ved hurtig bevægelse
         brush_size = 15
 
-        # Tegn på tkinter canvas (linje i stedet for cirkel)
+        # Draw on TKINTER CANVAS (what user sees)
         self.canvas.create_line(
             self.last_x, self.last_y,
             event.x, event.y,
             width=brush_size * 2,
             fill='black',
-            capstyle=tk.ROUND,  # Runde ender
-            smooth=True  # Smooth linjer
+            capstyle=tk.ROUND,
+            smooth=True
         )
 
-        # Tegn på PIL image (også linje)
+        # Draw on PIL IMAGE (for neural network)
         self.draw.line(
             [self.last_x, self.last_y, event.x, event.y],
             fill='black',
             width=brush_size * 2,
-            joint='curve'  # Smooth joints
+            joint='curve'
         )
 
-        # Opdater sidste position
+        # Cancel previous scheduled prediction
+        if self.after_id:
+            self.root.after_cancel(self.after_id)
+
+        # Schedule NEW prediction in 300ms
+        self.after_id = self.root.after(300, self.predict_digit)
+
+        # Update position
         self.last_x = event.x
         self.last_y = event.y
 
-        # Mark at vi er ved at tegne
-        self.is_drawing = True
-
-        # Schedule prediction update (debounced)
-        if self.after_id:
-            self.root.after_cancel(self.after_id)
-        self.after_id = self.root.after(self.prediction_delay, self.predict_digit_auto)
-
     def stop_drawing(self, event):
-        """Når musen slippes"""
-        self.is_drawing = False
+        """Called when user releases mouse button"""
         self.last_x = None
         self.last_y = None
-        self.predict_digit_auto()
+
+        #self.root.after(300, self.predict_digit)  # Debounced prediction
+
+
+    def preprocess_image(self):
+        img = ImageOps.invert(self.image)
+        img = img.resize((28, 28))
+        img_array = np.array(img) / 255.0
+        return img_array.reshape(1, 28, 28, 1)
+
+    def predict_digit(self):
+        img = self.preprocess_image()
+        prediction = self.model.predict(img, verbose=0)[0]
+        digit = np.argmax(prediction)
+        self.top_digit_label.config(text=str(digit))
+        self.update_probabilities(prediction)
+
+    def update_probabilities(self, probabilities):
+        """Update all 10 probability bars with new values
+
+        Args:
+            probabilities: List of 10 floats (0.0 to 1.0)
+        """
+        # Find which digit has highest probability
+        import numpy as np
+        max_prob_idx = np.argmax(probabilities)
+
+        # Update each bar
+        for i, (prob, bar, percentage_label) in enumerate(zip(
+                probabilities,
+                self.prob_bars,
+                self.prob_percentages
+        )):
+            # Clear previous bar
+            bar.delete("all")
+
+            # Calculate bar width (max 250 pixels)
+            bar_width = int(prob * 250)
+
+            # Choose color based on probability and if it's the max
+            if i == max_prob_idx:
+                color = '#2ecc71'  # Green for highest probability
+            elif prob > 0.5:
+                color = '#3498db'  # Blue for high probability
+            elif prob > 0.2:
+                color = '#f39c12'  # Orange for medium
+            else:
+                color = '#95a5a6'  # Gray for low
+
+            # Draw the bar (rectangle)
+            if bar_width > 0:
+                bar.create_rectangle(
+                    0, 0,  # Top-left corner (x, y)
+                    bar_width, 25,  # Bottom-right corner (x, y)
+                    fill=color,  # Fill color
+                    outline=''  # No outline
+                )
+
+            # Update percentage text
+            percentage_label.config(text=f"{prob * 100:.1f}%")
+
+            # Highlight the highest probability
+            if i == max_prob_idx:
+                percentage_label.config(
+                    fg='#2ecc71',  # Green text
+                    font=('Helvetica', 12, 'bold')
+                )
+            else:
+                percentage_label.config(
+                    fg='white',
+                    font=('Helvetica', 11)
+                )
 
     def clear_canvas(self):
-        """Ryd canvas og PIL image"""
+        """Clear both Canvas and PIL Image"""
+        # Clear tkinter canvas
         self.canvas.delete("all")
+
+        # Reset PIL image
         self.image = Image.new('L', (self.canvas_width, self.canvas_height), 'white')
         self.draw = ImageDraw.Draw(self.image)
 
-        # Reset sidste position
+        # Reset drawing state
         self.last_x = None
         self.last_y = None
 
-        # Reset predictions til default
+        # Reset predictions
         self.top_digit_label.config(text="?")
         self.top_prediction_frame.config(bg='#2ecc71')
         self.update_probabilities([0.1] * 10)
-
-    def preprocess_image(self):
-        """Forbehandl billedet til MNIST format (28x28)"""
-        img_array_check = np.array(self.image)
-        if img_array_check.min() > 250:
-            return None
-
-        img = ImageOps.invert(self.image)
-        img = img.resize((28, 28), Image.Resampling.LANCZOS)
-        img = img.filter(ImageFilter.GaussianBlur(radius=1))
-
-        img_array = np.array(img)
-        img_array = img_array / 255.0
-
-        # For CNN model: (1, 28, 28, 1)
-        img_array = img_array.reshape(1, 28, 28, 1)
-
-        return img_array
-
-    def predict_digit_auto(self):
-        """Lav automatisk prediction"""
-        try:
-            processed_img = self.preprocess_image()
-
-            if processed_img is None:
-                return
-
-            prediction = self.model.predict(processed_img, verbose=0)[0]
-            digit = np.argmax(prediction)
-            confidence = prediction[digit]
-
-            self.top_digit_label.config(text=str(digit))
-
-            if confidence > 0.9:
-                bg_color = '#2ecc71'
-            elif confidence > 0.7:
-                bg_color = '#f39c12'
-            else:
-                bg_color = '#e74c3c'
-
-            self.top_prediction_frame.config(bg=bg_color)
-            self.top_digit_label.config(bg=bg_color)
-
-            self.update_probabilities(prediction)
-
-        except Exception as e:
-            print(f"Fejl i prediction: {e}")
-
-    def update_probabilities(self, probabilities):
-        """Opdater alle probability bars"""
-        max_prob_idx = np.argmax(probabilities)
-
-        for i, (prob, bar, percentage_label) in enumerate(zip(
-                probabilities, self.prob_bars, self.prob_percentages
-        )):
-            bar.delete("all")
-            bar_width = int(prob * 250)
-
-            if i == max_prob_idx:
-                color = '#2ecc71'
-            elif prob > 0.5:
-                color = '#3498db'
-            elif prob > 0.2:
-                color = '#f39c12'
-            else:
-                color = '#95a5a6'
-
-            if bar_width > 0:
-                bar.create_rectangle(
-                    0, 0, bar_width, 25,
-                    fill=color,
-                    outline=''
-                )
-
-            percentage_label.config(text=f"{prob * 100:.1f}%")
-
-            if i == max_prob_idx:
-                percentage_label.config(fg='#2ecc71', font=('Helvetica', 12, 'bold'))
-            else:
-                percentage_label.config(fg='white', font=('Helvetica', 11))
 
 
 def main():
