@@ -17,13 +17,10 @@ def load_data():
 
 
 # 2. CNN med data augmentation
-def create_model():
-    randomness =  0.2
+# noinspection SpellCheckingInspection
+def create_model(augmentation=0, dropout=0.5):
     model = models.Sequential([
         # Data augmentation
-        layers.RandomRotation(randomness),
-        layers.RandomTranslation(randomness, randomness),
-        layers.RandomZoom(randomness),
 
         # CNN lag
         layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28,28,1)),
@@ -33,7 +30,7 @@ def create_model():
 
         layers.Flatten(),
         layers.Dense(128, activation='relu'),
-        layers.Dropout(0.5),
+        layers.Dropout(dropout),
         layers.Dense(10, activation='softmax')
     ])
     model.compile(
@@ -71,7 +68,7 @@ def train_model():
     history = model.fit(
         x_train, y_train,
         batch_size=128,
-        epochs=15,
+        epochs=5,
         validation_data=(x_test, y_test),
         verbose=1
     )
@@ -81,7 +78,10 @@ def train_model():
     model.save("mnist_model.keras")
     print("✅ Model gemt!")
 
+    plot_history(history)
     return model, history
+
+
 
 
 # Run

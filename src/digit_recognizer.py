@@ -1,19 +1,21 @@
 import tkinter as tk
 from tkinter import Frame, Label, Canvas, Button
-from PIL import Image, ImageDraw, ImageOps, ImageFilter
+from PIL import Image, ImageDraw, ImageOps
 from keras.models import load_model
 import numpy as np
 
 
+# noinspection PyUnusedLocal
 class DigitRecognizer:
+    # noinspection SpellCheckingInspection
     def __init__(self, root):
         self.root = root
-        self.model = load_model("./data/mnist_model.keras")
+        self.model = load_model("./experiments/model_high_aug.keras")
         self.root.title("Håndskrevne Tal - Neural Network Genkendelse")
         self.root.geometry("900x650")
         self.root.configure(bg='#2c3e50')
         self.after_id = None
-        self.prediction_delay = 300  # milliseconds
+        self.prediction_delay = 300
 
         # Track drawing state
         self.last_x = None
@@ -65,28 +67,28 @@ class DigitRecognizer:
 
 
         # BIND MOUSE EVENTS to canvas
-        # When user clicks (presses mouse button)
+        # Mouse button
         self.canvas.bind("<Button-1>", self.start_drawing)
 
-        # When user drags (moves mouse with button pressed)
+        # Drags mouse
         self.canvas.bind("<B1-Motion>", self.paint)
 
-        # When user releases mouse button
+        # Release mouse button
         self.canvas.bind("<ButtonRelease-1>", self.stop_drawing)
 
+        # Space to clear canvas
         self.root.bind("<space>", lambda e: self.clear_canvas())
 
         # CLEAR BUTTON
         self.clear_button = Button(
             left_frame,
             text="Ryd Canvas",
-            command=self.clear_canvas,  # Function to call when clicked
-            bg='#e74c3c',  # Red background
-            fg='white',  # White text
+            command=self.clear_canvas,
+            fg='black',  # White text
             font=('Helvetica', 14, 'bold'),
             padx=20,
             pady=10,
-            cursor='pointinghand'  # Hand cursor on hover
+            cursor='pointinghand'
         )
         self.clear_button.pack(pady=20)
 
@@ -108,12 +110,11 @@ class DigitRecognizer:
         # TOP PREDICTION BOX - shows the best guess
         self.top_prediction_frame = Frame(
             right_frame,
-            bg='#2ecc71',  # Green background
+            bg='#2ecc71',  # Green
             height=100
         )
         self.top_prediction_frame.pack(fill=tk.X, padx=20, pady=10)
 
-        # Label saying "Bedste Gæt:"
         Label(
             self.top_prediction_frame,
             text="Bedste Gæt:",
@@ -262,8 +263,7 @@ class DigitRecognizer:
         Args:
             probabilities: List of 10 floats (0.0 to 1.0)
         """
-        # Find which digit has highest probability
-        import numpy as np
+        # Find which digit has the highest probability
         max_prob_idx = np.argmax(probabilities)
 
         # Update each bar
@@ -331,6 +331,7 @@ class DigitRecognizer:
         self.update_probabilities([0.1] * 10)
 
 
+# noinspection PyUnusedLocal
 def main():
     root = tk.Tk()
     app = DigitRecognizer(root)
