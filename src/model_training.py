@@ -21,7 +21,9 @@ def load_data():
 def create_model(augmentation=0, dropout=0.5):
     model = models.Sequential([
         # Data augmentation
-
+        layers.RandomRotation(augmentation),
+        layers.RandomTranslation(augmentation, augmentation),
+        layers.RandomZoom(augmentation),
         # CNN lag
         layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28,28,1)),
         layers.MaxPooling2D((2,2)),
