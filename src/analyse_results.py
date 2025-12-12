@@ -12,7 +12,7 @@ from pathlib import Path
 
 # Sæt pæn plotting style
 sns.set_style("whitegrid")
-plt.rcParams['figure.figsize'] = (12, 8)
+plt.rcParams['figure.figsize'] = (8, 8)
 plt.rcParams['font.size'] = 11
 
 
@@ -57,7 +57,7 @@ def create_comparison_table(experiments):
 
 def plot_accuracy_comparison(experiments, save_dir='results'):
     """Plot sammenligning af accuracy for alle eksperimenter"""
-    plt.figure(figsize=(14, 8))
+    plt.figure(figsize=(7, 7))
 
     for exp in experiments:
         name = exp['config']['name']
@@ -80,7 +80,7 @@ def plot_accuracy_comparison(experiments, save_dir='results'):
 
 def plot_loss_comparison(experiments, save_dir='results'):
     """Plot sammenligning af loss for alle eksperimenter"""
-    plt.figure(figsize=(14, 8))
+    plt.figure(figsize=(8, 8))
 
     for exp in experiments:
         name = exp['config']['name']
@@ -139,7 +139,7 @@ def plot_final_metrics_bars(experiments, save_dir='results'):
     names = [exp['config']['name'] for exp in experiments]
     accuracies = [exp['test_accuracy'] * 100 for exp in experiments]
 
-    plt.figure(figsize=(12, 7))
+    plt.figure(figsize=(7, 7))
     bars = plt.bar(range(len(names)), accuracies, color=['#3498db', '#2ecc71', '#f39c12', '#e74c3c'][:len(names)])
 
     # Add value labels on bars

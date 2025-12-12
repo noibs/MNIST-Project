@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from keras.datasets import mnist
 from keras.utils import to_categorical
 from keras import layers, models
+from keras.optimizers import Adam
 
 
 # 1. Indlæs og forbehandl data
@@ -18,14 +19,16 @@ def load_data():
 
 # 2. CNN med data augmentation
 # noinspection SpellCheckingInspection
-def create_model(augmentation=0, dropout=0.5):
+def create_model(augmentation=0.2, dropout=0.5, learning_rate=0):
     model = models.Sequential([
+        layers.Input(shape=(28, 28, 1)),
         # Data augmentation
         layers.RandomRotation(augmentation),
         layers.RandomTranslation(augmentation, augmentation),
         layers.RandomZoom(augmentation),
         # CNN lag
-        layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28,28,1)),
+
+        layers.Conv2D(32, (3, 3), activation='relu'),
         layers.MaxPooling2D((2,2)),
         layers.Conv2D(64, (3,3), activation='relu'),
         layers.MaxPooling2D((2,2)),
@@ -35,8 +38,15 @@ def create_model(augmentation=0, dropout=0.5):
         layers.Dropout(dropout),
         layers.Dense(10, activation='softmax')
     ])
+
+    if learning_rate > 0:
+        optimizer = Adam(learning_rate=learning_rate)
+    else:
+        optimizer = 'adam'  # Default Adam
+
+
     model.compile(
-        optimizer='adam',
+        optimizer=optimizer,
         loss='categorical_crossentropy',
         metrics=['accuracy']
     )
@@ -77,7 +87,7 @@ def train_model():
 
     test_loss, test_acc = model.evaluate(x_test, y_test)
     print(f"Test accuracy: {test_acc*100:.2f}%")
-    model.save("mnist_model.keras")
+    model.save("mnist_model_baseline.keras")
     print("✅ Model gemt!")
 
     plot_history(history)

@@ -94,9 +94,9 @@ class DigitRecognizerCompare:
         # CLEAR BUTTON
         Button(
             left_frame,
-            text="Ryd Canvas (Space)",
+            text="Ryd Canvas",
             command=self.clear_canvas,
-            fg='white',
+            fg='black',
             bg='#e74c3c',
             font=('Helvetica', 14, 'bold'),
             padx=20,
@@ -320,10 +320,10 @@ class DigitRecognizerCompare:
 def main():
     # DEFINER DINE MODELLER HER
     model_paths = {
-        'Baseline': './experiments/model_baseline_no_aug.keras',
-        'Low Aug': './experiments/model_low_aug.keras',
-        'Medium Aug': './experiments/model_medium_aug.keras',
-        'High Aug': './experiments/model_high_aug.keras',
+        'Baseline': './experiments/Aug 10/model_aug_none.keras',
+        'Low Aug': './experiments/Aug 10/model_aug_low.keras',
+        'Medium Aug': './experiments/Aug 10/model_aug_mid.keras',
+        'High Aug': './experiments/Aug 10/model_aug_high.keras',
     }
 
     root = tk.Tk()
@@ -333,3 +333,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

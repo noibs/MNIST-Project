@@ -10,7 +10,7 @@ class DigitRecognizer:
     # noinspection SpellCheckingInspection
     def __init__(self, root):
         self.root = root
-        self.model = load_model("./experiments/model_high_aug.keras")
+        self.model = load_model("./experiments/Aug 10/model_aug_mid.keras")
         self.root.title("Håndskrevne Tal - Neural Network Genkendelse")
         self.root.geometry("900x650")
         self.root.configure(bg='#2c3e50')
