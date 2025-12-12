@@ -1,8 +1,3 @@
-"""
-digit_recognizer_compare.py
-Sammenlign flere MNIST modeller - kompakt med kun Top 3
-"""
-
 import tkinter as tk
 from tkinter import Frame, Label, Canvas, Button
 from PIL import Image, ImageDraw, ImageOps
@@ -32,9 +27,8 @@ class DigitRecognizerCompare:
         if not self.models:
             raise ValueError("No models loaded!")
 
-        # Setup window
         num_models = len(self.models)
-        width = 400 + (num_models * 280)  # Canvas + models
+        width = 400 + (num_models * 280)  # Canvas + modeller
         self.root.title("Håndskrevne Tal - Model Sammenligning")
         self.root.geometry(f"{width}x650")
         self.root.configure(bg='#2c3e50')
@@ -42,7 +36,7 @@ class DigitRecognizerCompare:
         self.after_id = None
         self.prediction_delay = 300
 
-        # Track drawing state
+        # Husk sidste position
         self.last_x = None
         self.last_y = None
 
@@ -52,7 +46,6 @@ class DigitRecognizerCompare:
         self.image = Image.new('L', (self.canvas_width, self.canvas_height), 'white')
         self.draw = ImageDraw.Draw(self.image)
 
-        # Build UI
         self.build_ui()
 
     def build_ui(self):
@@ -60,11 +53,11 @@ class DigitRecognizerCompare:
         main_frame = Frame(self.root, bg='#2c3e50')
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-        # LEFT FRAME - Drawing canvas
+        # LEFT FRAME - Tegn canvas
         left_frame = Frame(main_frame, bg='#2c3e50')
         left_frame.pack(side=tk.LEFT, padx=(0, 20))
 
-        # Title
+        # Titel
         Label(
             left_frame,
             text="Tegn et tal (0-9)",
@@ -85,13 +78,13 @@ class DigitRecognizerCompare:
         )
         self.canvas.pack()
 
-        # BIND MOUSE EVENTS
+        # Bind muse events
         self.canvas.bind("<Button-1>", self.start_drawing)
         self.canvas.bind("<B1-Motion>", self.paint)
         self.canvas.bind("<ButtonRelease-1>", self.stop_drawing)
         self.root.bind("<space>", lambda e: self.clear_canvas())
 
-        # CLEAR BUTTON
+        # Ryd knap
         Button(
             left_frame,
             text="Ryd Canvas",
@@ -104,11 +97,11 @@ class DigitRecognizerCompare:
             cursor='hand2'
         ).pack(pady=20)
 
-        # RIGHT FRAME - Model predictions
+        # RIGHT FRAME - Model sandsynligheder
         right_frame = Frame(main_frame, bg='#2c3e50')
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
-        # Create frame for each model
+        # Lav frame for hver model
         self.model_widgets = {}
 
         for model_name in self.model_names:
@@ -116,12 +109,12 @@ class DigitRecognizerCompare:
             model_container.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10)
 
     def create_model_frame(self, parent, model_name):
-        """Lav kompakt prediction frame med kun Top 3"""
+        """Kompakt prediction frame med kun Top 3"""
 
         # Container
         container = Frame(parent, bg='#34495e', relief=tk.RAISED, borderwidth=2)
 
-        # Model name
+        # Model navn
         Label(
             container,
             text=model_name.replace('_', ' ').title(),
@@ -131,7 +124,7 @@ class DigitRecognizerCompare:
             pady=10
         ).pack(fill=tk.X)
 
-        # TOP PREDICTION (big box)
+        # Bedste gæt
         top_frame = Frame(container, bg='#2ecc71', height=120)
         top_frame.pack(fill=tk.X, padx=15, pady=15)
         top_frame.pack_propagate(False)
@@ -144,7 +137,7 @@ class DigitRecognizerCompare:
             fg='white'
         ).pack(pady=(12, 0))
 
-        # Big digit
+        # Store tal
         top_digit_label = Label(
             top_frame,
             text="?",
@@ -154,7 +147,7 @@ class DigitRecognizerCompare:
         )
         top_digit_label.pack()
 
-        # Confidence
+        # Sandsynlighed
         confidence_label = Label(
             top_frame,
             text="---%",
@@ -167,7 +160,7 @@ class DigitRecognizerCompare:
         # Divider
         Frame(container, bg='#2c3e50', height=2).pack(fill=tk.X, padx=15, pady=5)
 
-        # TOP 3 PREDICTIONS
+        # TOP 3 Sandsynligheder
         top3_frame = Frame(container, bg='#34495e')
         top3_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
 
@@ -185,7 +178,7 @@ class DigitRecognizerCompare:
             pred_frame = Frame(top3_frame, bg='#2c3e50')
             pred_frame.pack(fill=tk.X, pady=4)
 
-            # Medal + digit + percentage
+            # Procent label
             lbl = Label(
                 pred_frame,
                 text="(0.0%)",
@@ -199,7 +192,7 @@ class DigitRecognizerCompare:
             lbl.pack(fill=tk.X)
             top3_labels.append(lbl)
 
-        # Store references
+        # Reference til labels
         self.model_widgets[model_name] = {
             'top_frame': top_frame,
             'top_digit_label': top_digit_label,
@@ -221,7 +214,7 @@ class DigitRecognizerCompare:
 
         brush_size = 15
 
-        # Draw on canvas
+        # Tegn på canvas
         self.canvas.create_line(
             self.last_x, self.last_y,
             event.x, event.y,
@@ -231,7 +224,7 @@ class DigitRecognizerCompare:
             smooth=True
         )
 
-        # Draw on PIL image
+        # Tegn på PIL image
         self.draw.line(
             [self.last_x, self.last_y, event.x, event.y],
             fill='black',
@@ -239,7 +232,7 @@ class DigitRecognizerCompare:
             joint='curve'
         )
 
-        # Schedule prediction
+        # Annuller tidligere kald hvis der er et
         if self.after_id:
             self.root.after_cancel(self.after_id)
         self.after_id = self.root.after(300, self.predict_all_models)
@@ -258,7 +251,7 @@ class DigitRecognizerCompare:
         return img_array.reshape(1, 28, 28, 1)
 
     def predict_all_models(self):
-        """Get predictions from all models"""
+        """Får forudsigelser fra alle modeller og opdater UI"""
         img = self.preprocess_image()
 
         for model_name, model in self.models.items():
@@ -266,7 +259,7 @@ class DigitRecognizerCompare:
 
             widgets = self.model_widgets[model_name]
 
-            # Top prediction
+            # Højste gæt
             top_digit = np.argmax(prediction)
             top_conf = prediction[top_digit] * 100
 
@@ -274,20 +267,21 @@ class DigitRecognizerCompare:
             widgets['confidence_label'].config(text=f"{top_conf:.1f}%")
 
             # Color based on confidence
+            # Grøn: >90, Blå: >70, Orange: >50, Rød: ellers
             if top_conf > 90:
-                bg_color = '#2ecc71'  # Green
+                bg_color = '#2ecc71'  # Grøn
             elif top_conf > 70:
-                bg_color = '#3498db'  # Blue
+                bg_color = '#3498db'  # Blå
             elif top_conf > 50:
                 bg_color = '#f39c12'  # Orange
             else:
-                bg_color = '#e74c3c'  # Red
+                bg_color = '#e74c3c'  # Rød
 
             widgets['top_frame'].config(bg=bg_color)
             widgets['top_digit_label'].config(bg=bg_color)
             widgets['confidence_label'].config(bg=bg_color)
 
-            # Top 3 predictions
+            # Top 3 sansynligheder
             top3_idx = np.argsort(prediction)[-3:][::-1]
             for i, idx in enumerate(top3_idx):
                 prob = prediction[idx] * 100
@@ -296,19 +290,19 @@ class DigitRecognizerCompare:
                 )
 
     def clear_canvas(self):
-        """Clear canvas and reset predictions"""
-        # Clear canvas
+        """Ryd canvas og sandsynligheder"""
+        # Ryd canvas
         self.canvas.delete("all")
 
         # Reset PIL image
         self.image = Image.new('L', (self.canvas_width, self.canvas_height), 'white')
         self.draw = ImageDraw.Draw(self.image)
 
-        # Reset drawing state
+        # Reset tegne state
         self.last_x = None
         self.last_y = None
 
-        # Reset all predictions
+        # Reset alle sandsynligheder
         for model_name, widgets in self.model_widgets.items():
             widgets['top_digit_label'].config(text="?")
             widgets['confidence_label'].config(text="---%")
@@ -318,7 +312,7 @@ class DigitRecognizerCompare:
 
 
 def main():
-    # DEFINER DINE MODELLER HER
+    # Alle modeller der skal sammenlignes
     model_paths = {
         'Baseline': './experiments/Aug 10/model_aug_none.keras',
         'Low Aug': './experiments/Aug 10/model_aug_low.keras',
